@@ -1,0 +1,20 @@
+{
+  "name": "bootcamp-fullstack",
+  "private": true,
+  "workspaces": [
+    "apps/*/client",
+    "apps/*/server",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:ecommerce": "concurrently \"npm run dev --workspace=apps/ecommerce/server\" \"npm run dev --workspace=apps/ecommerce/client\"",
+    "dev:bike": "concurrently \"npm run dev --workspace=apps/bike-booking/server\" \"npm run dev --workspace=apps/bike-booking/client\"",
+    "lint": "eslint .",
+    "format": "prettier . --write"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}
