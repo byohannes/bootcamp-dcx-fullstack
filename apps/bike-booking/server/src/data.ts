@@ -1,4 +1,4 @@
-import { Bike, Booking } from "./types";
+import { Bike, Booking, User } from "./types";
 
 // Sample bikes data
 export const bikes: Bike[] = [
@@ -60,6 +60,9 @@ export const bikes: Bike[] = [
 
 // Bookings storage (in-memory)
 export const bookings: Booking[] = [];
+
+// Users storage (in-memory)
+export const users: User[] = [];
 
 // Helper to generate unique IDs
 export function generateId(): string {

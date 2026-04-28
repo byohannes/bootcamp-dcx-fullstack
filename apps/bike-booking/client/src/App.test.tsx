@@ -31,11 +31,38 @@ vi.mock("./api", () => ({
   createBooking: vi.fn(),
   cancelBooking: vi.fn(),
   checkAvailability: vi.fn(),
+  login: vi.fn(() =>
+    Promise.resolve({
+      id: "user-1",
+      email: "test@example.com",
+      name: "Test User",
+      createdAt: new Date().toISOString(),
+    }),
+  ),
+  register: vi.fn(() =>
+    Promise.resolve({
+      id: "user-1",
+      email: "test@example.com",
+      name: "Test User",
+      createdAt: new Date().toISOString(),
+    }),
+  ),
+  getUser: vi.fn(),
 }));
+
+// Mock localStorage
+const localStorageMock = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
 describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorageMock.getItem.mockReturnValue(null);
   });
 
   it("renders the app header", () => {
@@ -46,15 +73,13 @@ describe("App", () => {
     );
   });
 
-  it("renders navigation buttons", () => {
+  it("renders navigation with login button when not authenticated", () => {
     render(<App />);
 
     expect(
       screen.getByRole("button", { name: /browse bikes/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /my bookings/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
   });
 
   it("loads and displays bikes", async () => {
@@ -75,18 +100,14 @@ describe("App", () => {
     });
   });
 
-  it("navigates to My Bookings when clicked", async () => {
+  it("navigates to login when clicking Login button", async () => {
     render(<App />);
 
-    const myBookingsButton = screen.getByRole("button", {
-      name: /my bookings/i,
-    });
-    fireEvent.click(myBookingsButton);
+    const loginButton = screen.getByRole("button", { name: /login/i });
+    fireEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("heading", { level: 2, name: /my bookings/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Welcome Back")).toBeInTheDocument();
     });
   });
 

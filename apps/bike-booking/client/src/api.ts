@@ -1,4 +1,12 @@
-import type { ApiResponse, Bike, Booking, CreateBookingRequest } from "./types";
+import type {
+  ApiResponse,
+  Bike,
+  Booking,
+  CreateBookingRequest,
+  User,
+  RegisterRequest,
+  LoginRequest,
+} from "./types";
 
 const API_BASE = "/api";
 
@@ -75,4 +83,40 @@ export async function cancelBooking(id: string): Promise<void> {
   if (!data.success) {
     throw new Error(data.error || "Failed to cancel booking");
   }
+}
+
+// Users API
+export async function register(request: RegisterRequest): Promise<User> {
+  const response = await fetch(`${API_BASE}/users/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  const data: ApiResponse<User> = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to register");
+  }
+  return data.data!;
+}
+
+export async function login(request: LoginRequest): Promise<User> {
+  const response = await fetch(`${API_BASE}/users/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  const data: ApiResponse<User> = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to login");
+  }
+  return data.data!;
+}
+
+export async function getUser(id: string): Promise<User> {
+  const response = await fetch(`${API_BASE}/users/${id}`);
+  const data: ApiResponse<User> = await response.json();
+  if (!data.success) {
+    throw new Error(data.error || "Failed to fetch user");
+  }
+  return data.data!;
 }

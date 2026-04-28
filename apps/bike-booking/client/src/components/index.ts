@@ -3,3 +3,5 @@ export { BikeList } from "./BikeList";
 export { BookingForm } from "./BookingForm";
 export { BookingSuccess } from "./BookingSuccess";
 export { MyBookings } from "./MyBookings";
+export { Login } from "./Login";
+export { Register } from "./Register";

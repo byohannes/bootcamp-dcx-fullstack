@@ -1,22 +1,55 @@
-import { useState } from "react";
-import type { Bike, Booking, View } from "./types";
+import { useState, useEffect } from "react";
+import type { Bike, Booking, View, User } from "./types";
 import {
   BikeList,
   BookingForm,
   BookingSuccess,
   MyBookings,
+  Login,
+  Register,
 } from "./components";
 import "./App.css";
 
-// Simulated user ID (in a real app, this would come from authentication)
-const USER_ID = "user-1";
+// Local storage key for user session
+const USER_STORAGE_KEY = "bike-booking-user";
 
 function App() {
   const [currentView, setCurrentView] = useState<View>("bikes");
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [lastBooking, setLastBooking] = useState<Booking | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem(USER_STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  function handleLogin(loggedInUser: User) {
+    setUser(loggedInUser);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(loggedInUser));
+    setCurrentView("bikes");
+  }
+
+  function handleLogout() {
+    setUser(null);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    setCurrentView("bikes");
+    setSelectedBike(null);
+    setLastBooking(null);
+  }
 
   function handleSelectBike(bike: Bike) {
+    if (!user) {
+      setCurrentView("login");
+      return;
+    }
     setSelectedBike(bike);
     setCurrentView("bike-detail");
   }
@@ -46,24 +79,53 @@ function App() {
           >
             Browse Bikes
           </button>
-          <button
-            className={`nav-button ${currentView === "my-bookings" ? "active" : ""}`}
-            onClick={() => setCurrentView("my-bookings")}
-          >
-            My Bookings
-          </button>
+          {user ? (
+            <>
+              <button
+                className={`nav-button ${currentView === "my-bookings" ? "active" : ""}`}
+                onClick={() => setCurrentView("my-bookings")}
+              >
+                My Bookings
+              </button>
+              <span className="user-greeting">Hi, {user.name}</span>
+              <button className="nav-button logout" onClick={handleLogout}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              className={`nav-button ${currentView === "login" ? "active" : ""}`}
+              onClick={() => setCurrentView("login")}
+            >
+              Login
+            </button>
+          )}
         </nav>
       </header>
 
       <main className="app-main">
+        {currentView === "login" && (
+          <Login
+            onLogin={handleLogin}
+            onRegister={() => setCurrentView("register")}
+          />
+        )}
+
+        {currentView === "register" && (
+          <Register
+            onRegister={handleLogin}
+            onLogin={() => setCurrentView("login")}
+          />
+        )}
+
         {currentView === "bikes" && (
           <BikeList onSelectBike={handleSelectBike} />
         )}
 
-        {currentView === "bike-detail" && selectedBike && (
+        {currentView === "bike-detail" && selectedBike && user && (
           <BookingForm
             bike={selectedBike}
-            userId={USER_ID}
+            userId={user.id}
             onSuccess={handleBookingSuccess}
             onCancel={handleBackToBikes}
           />
@@ -77,8 +139,8 @@ function App() {
           />
         )}
 
-        {currentView === "my-bookings" && (
-          <MyBookings userId={USER_ID} onBack={handleBackToBikes} />
+        {currentView === "my-bookings" && user && (
+          <MyBookings userId={user.id} onBack={handleBackToBikes} />
         )}
       </main>
 

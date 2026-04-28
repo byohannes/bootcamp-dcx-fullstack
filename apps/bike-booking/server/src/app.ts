@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import bikesRouter from "./routes/bikes";
 import bookingsRouter from "./routes/bookings";
+import usersRouter from "./routes/users";
 
 const app = express();
 
@@ -16,6 +17,7 @@ app.get("/api/health", (req, res) => {
 // API routes
 app.use("/api/bikes", bikesRouter);
 app.use("/api/bookings", bookingsRouter);
+app.use("/api/users", usersRouter);
 
 // 404 handler
 app.use((req, res) => {

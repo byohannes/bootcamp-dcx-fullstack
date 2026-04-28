@@ -1,10 +1,11 @@
 import request from "supertest";
 import app from "./app";
-import { bookings } from "./data";
+import { bookings, users } from "./data";
 
-// Clear bookings before each test
+// Clear bookings and users before each test
 beforeEach(() => {
   bookings.length = 0;
+  users.length = 0;
 });
 
 describe("Health API", () => {
@@ -176,6 +177,135 @@ describe("Bookings API", () => {
 
     it("should return 404 for non-existent booking", async () => {
       const response = await request(app).delete("/api/bookings/non-existent");
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+    });
+  });
+});
+
+describe("Users API", () => {
+  describe("POST /api/users/register", () => {
+    it("should register a new user", async () => {
+      const response = await request(app).post("/api/users/register").send({
+        email: "test@example.com",
+        password: "password123",
+        name: "Test User",
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.email).toBe("test@example.com");
+      expect(response.body.data.name).toBe("Test User");
+      expect(response.body.data).not.toHaveProperty("password");
+    });
+
+    it("should require all fields", async () => {
+      const response = await request(app).post("/api/users/register").send({
+        email: "test@example.com",
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should validate email format", async () => {
+      const response = await request(app).post("/api/users/register").send({
+        email: "invalid-email",
+        password: "password123",
+        name: "Test User",
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain("email");
+    });
+
+    it("should prevent duplicate email registration", async () => {
+      // Register first user
+      await request(app).post("/api/users/register").send({
+        email: "test@example.com",
+        password: "password123",
+        name: "Test User",
+      });
+
+      // Try to register with same email
+      const response = await request(app).post("/api/users/register").send({
+        email: "test@example.com",
+        password: "password456",
+        name: "Another User",
+      });
+
+      expect(response.status).toBe(409);
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe("POST /api/users/login", () => {
+    beforeEach(async () => {
+      // Create a user for login tests
+      await request(app).post("/api/users/register").send({
+        email: "login@example.com",
+        password: "password123",
+        name: "Login User",
+      });
+    });
+
+    it("should login with valid credentials", async () => {
+      const response = await request(app).post("/api/users/login").send({
+        email: "login@example.com",
+        password: "password123",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.email).toBe("login@example.com");
+      expect(response.body.data).not.toHaveProperty("password");
+    });
+
+    it("should reject invalid password", async () => {
+      const response = await request(app).post("/api/users/login").send({
+        email: "login@example.com",
+        password: "wrongpassword",
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should reject non-existent email", async () => {
+      const response = await request(app).post("/api/users/login").send({
+        email: "nonexistent@example.com",
+        password: "password123",
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe("GET /api/users/:id", () => {
+    it("should get user by ID", async () => {
+      // Register a user first
+      const registerResponse = await request(app)
+        .post("/api/users/register")
+        .send({
+          email: "getuser@example.com",
+          password: "password123",
+          name: "Get User",
+        });
+
+      const userId = registerResponse.body.data.id;
+
+      const response = await request(app).get(`/api/users/${userId}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.id).toBe(userId);
+      expect(response.body.data).not.toHaveProperty("password");
+    });
+
+    it("should return 404 for non-existent user", async () => {
+      const response = await request(app).get("/api/users/non-existent");
 
       expect(response.status).toBe(404);
       expect(response.body.success).toBe(false);
