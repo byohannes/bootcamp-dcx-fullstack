@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { users, generateId } from "../data";
-import type { RegisterRequest, LoginRequest, ApiResponse, User } from "../types";
+import type {
+  RegisterRequest,
+  LoginRequest,
+  ApiResponse,
+  User,
+} from "../types";
 
 const router = Router();
 
