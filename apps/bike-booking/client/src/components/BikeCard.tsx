@@ -6,18 +6,11 @@ interface BikeCardProps {
   onSelect: (bike: Bike) => void;
 }
 
-const bikeTypeEmoji: Record<string, string> = {
-  mountain: "⛰️",
-  road: "🏎️",
-  city: "🏙️",
-  electric: "⚡",
-};
-
 export function BikeCard({ bike, onSelect }: BikeCardProps) {
   return (
     <div className={`bike-card ${!bike.isAvailable ? "unavailable" : ""}`}>
       <div className="bike-image">
-        <span className="bike-emoji">{bikeTypeEmoji[bike.type] || "🚲"}</span>
+        <img src={bike.imageUrl} alt={bike.name} />
       </div>
       <div className="bike-info">
         <h3>{bike.name}</h3>

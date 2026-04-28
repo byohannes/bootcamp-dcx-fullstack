@@ -18,15 +18,19 @@
 }
 
 .bike-image {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 180px;
+  overflow: hidden;
 }
 
-.bike-emoji {
-  font-size: 48px;
+.bike-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.bike-card:hover .bike-image img {
+  transform: scale(1.05);
 }
 
 .bike-info {
