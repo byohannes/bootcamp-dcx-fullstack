@@ -22,6 +22,7 @@ Get the development environment running, understand the project structure, and p
 **Problem Solved**: Manual/unclear bike booking → easy online availability check and reservation
 
 ### Core Features (Sprints 1-2)
+
 1. View Available Bikes
 2. Select Date/Time for Booking
 3. Book a Bike
@@ -30,6 +31,7 @@ Get the development environment running, understand the project structure, and p
 6. Simple User Registration/Login
 
 ### Out of Scope
+
 - Payments
 - Admin dashboards
 - Bike maintenance tracking

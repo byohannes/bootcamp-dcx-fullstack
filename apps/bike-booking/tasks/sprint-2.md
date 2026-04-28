@@ -7,11 +7,13 @@ Build the React UI and connect it to the backend API. Create a responsive design
 ## Tasks
 
 ### 1. Types & API Client
+
 - [ ] Create TypeScript types matching backend
 - [ ] Create API client functions (fetch wrappers)
 - [ ] Add error handling for API calls
 
 ### 2. Authentication UI (Feature 2.6)
+
 - [ ] Create Login page/component
 - [ ] Create Registration page/component
 - [ ] Store user session (localStorage or state)
@@ -19,6 +21,7 @@ Build the React UI and connect it to the backend API. Create a responsive design
 - [ ] Protect routes requiring authentication
 
 ### 3. Bike Listing Page (Feature 2.1)
+
 - [ ] Create BikeList component
 - [ ] Create BikeCard component with:
   - [ ] Bike image
@@ -29,6 +32,7 @@ Build the React UI and connect it to the backend API. Create a responsive design
 - [ ] Add loading and error states
 
 ### 4. Booking Flow (Features 2.2, 2.3)
+
 - [ ] Create BookingForm component with:
   - [ ] Start date picker
   - [ ] Start time picker
@@ -41,6 +45,7 @@ Build the React UI and connect it to the backend API. Create a responsive design
 - [ ] Create BookingSuccess confirmation component
 
 ### 5. My Bookings Page (Features 2.4, 2.5)
+
 - [ ] Create MyBookings component
 - [ ] Display upcoming bookings section
 - [ ] Display past/cancelled bookings section
@@ -52,12 +57,14 @@ Build the React UI and connect it to the backend API. Create a responsive design
 - [ ] Show cancellation confirmation
 
 ### 6. Navigation & Layout
+
 - [ ] Create app header with logo
 - [ ] Add navigation: Browse Bikes | My Bookings | Login/Logout
 - [ ] Create responsive layout (mobile-first)
 - [ ] Add footer
 
 ### 7. Styling & Polish
+
 - [ ] Apply consistent color scheme
 - [ ] Add hover effects and transitions
 - [ ] Ensure responsive design (320px - 1920px)
@@ -65,6 +72,7 @@ Build the React UI and connect it to the backend API. Create a responsive design
 - [ ] Add toast notifications for actions
 
 ### 8. Testing
+
 - [ ] Write component tests (6+ test cases)
 - [ ] Test user flows end-to-end
 - [ ] Test responsive breakpoints
@@ -102,6 +110,7 @@ src/
 ## Success Criteria (from PRD)
 
 The project is successful if:
+
 1. ✅ Users can view bikes
 2. ✅ Users can create bookings
 3. ✅ Users can view their bookings
