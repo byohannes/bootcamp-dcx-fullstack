@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bike } from "../types";
+import type { Bike } from "../types";
 import { getBikes } from "../api";
 import { BikeCard } from "./BikeCard";
 import "./BikeList.css";

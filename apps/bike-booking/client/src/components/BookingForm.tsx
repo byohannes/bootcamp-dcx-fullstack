@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bike, Booking } from "../types";
+import type { Bike, Booking } from "../types";
 import { createBooking, checkAvailability } from "../api";
 import "./BookingForm.css";
 

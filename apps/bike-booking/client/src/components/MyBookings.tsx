@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Booking } from "../types";
+import type { Booking } from "../types";
 import { getBookings, cancelBooking } from "../api";
 import "./MyBookings.css";
 

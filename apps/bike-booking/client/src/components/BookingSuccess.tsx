@@ -1,4 +1,4 @@
-import { Booking } from "../types";
+import type { Booking } from "../types";
 import "./BookingSuccess.css";
 
 interface BookingSuccessProps {

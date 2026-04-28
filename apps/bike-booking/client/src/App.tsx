@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bike, Booking, View } from "./types";
+import type { Bike, Booking, View } from "./types";
 import {
   BikeList,
   BookingForm,

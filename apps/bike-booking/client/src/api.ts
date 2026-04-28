@@ -1,4 +1,4 @@
-import { ApiResponse, Bike, Booking, CreateBookingRequest } from "./types";
+import type { ApiResponse, Bike, Booking, CreateBookingRequest } from "./types";
 
 const API_BASE = "/api";
 
