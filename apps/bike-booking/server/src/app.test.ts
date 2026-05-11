@@ -1,12 +1,30 @@
 import request from "supertest";
 import app from "./app";
-import { bookings, users } from "./data";
+import { Bike, User, Booking } from "./db/models";
 
-// Clear bookings and users before each test
-beforeEach(() => {
-  bookings.length = 0;
-  users.length = 0;
-});
+// Helper to create a test bike
+async function createTestBike(overrides = {}) {
+  const bikeData = {
+    name: "Test Bike",
+    type: "mountain" as const,
+    description: "A test bike for testing",
+    pricePerHour: 15,
+    imageUrl: "https://example.com/bike.jpg",
+    ...overrides,
+  };
+  return await Bike.create(bikeData);
+}
+
+// Helper to create a test user
+async function createTestUser(overrides = {}) {
+  const userData = {
+    email: `test${Date.now()}@example.com`,
+    password: "password123",
+    name: "Test User",
+    ...overrides,
+  };
+  return await User.create(userData);
+}
 
 describe("Health API", () => {
   describe("GET /api/health", () => {
@@ -14,7 +32,7 @@ describe("Health API", () => {
       const response = await request(app).get("/api/health");
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: "ok" });
+      expect(response.body.status).toBe("ok");
     });
 
     it("should return JSON content type", async () => {
@@ -22,89 +40,223 @@ describe("Health API", () => {
 
       expect(response.headers["content-type"]).toMatch(/application\/json/);
     });
+
+    it("should include database status", async () => {
+      const response = await request(app).get("/api/health");
+
+      expect(response.body).toHaveProperty("database");
+      expect(response.body.database).toHaveProperty("connected");
+    });
+
+    it("should include uptime", async () => {
+      const response = await request(app).get("/api/health");
+
+      expect(response.body).toHaveProperty("uptime");
+      expect(typeof response.body.uptime).toBe("number");
+    });
   });
 });
 
 describe("Bikes API", () => {
   describe("GET /api/bikes", () => {
-    it("should return list of bikes", async () => {
+    it("should return empty list when no bikes exist", async () => {
       const response = await request(app).get("/api/bikes");
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(Array.isArray(response.body.data)).toBe(true);
-      expect(response.body.data.length).toBeGreaterThan(0);
+      expect(response.body.data.length).toBe(0);
+    });
+
+    it("should return list of bikes", async () => {
+      await createTestBike({ name: "Mountain Explorer" });
+      await createTestBike({ name: "City Cruiser", type: "city" });
+
+      const response = await request(app).get("/api/bikes");
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.length).toBe(2);
     });
 
     it("should include availability status for each bike", async () => {
+      await createTestBike();
+
       const response = await request(app).get("/api/bikes");
 
       expect(response.body.data[0]).toHaveProperty("isAvailable");
+      expect(response.body.data[0].isAvailable).toBe(true);
     });
 
     it("should filter bikes by type", async () => {
+      await createTestBike({ name: "Mountain 1", type: "mountain" });
+      await createTestBike({ name: "Mountain 2", type: "mountain" });
+      await createTestBike({ name: "City 1", type: "city" });
+
       const response = await request(app).get("/api/bikes?type=mountain");
 
       expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(2);
       response.body.data.forEach((bike: { type: string }) => {
         expect(bike.type).toBe("mountain");
       });
+    });
+
+    it("should filter by available bikes only", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+
+      // Create a booking that makes the bike unavailable now
+      const now = new Date();
+      const startTime = new Date(now.getTime() - 30 * 60 * 1000); // 30 mins ago
+      const endTime = new Date(now.getTime() + 30 * 60 * 1000); // 30 mins later
+
+      await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime,
+        endTime,
+        status: "confirmed",
+      });
+
+      const response = await request(app).get("/api/bikes?available=true");
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.length).toBe(0);
     });
   });
 
   describe("GET /api/bikes/:id", () => {
     it("should return a single bike", async () => {
-      const response = await request(app).get("/api/bikes/bike-1");
+      const bike = await createTestBike({ name: "Mountain Explorer" });
+
+      const response = await request(app).get(`/api/bikes/${bike._id}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe("bike-1");
+      expect(response.body.data.name).toBe("Mountain Explorer");
     });
 
     it("should return 404 for non-existent bike", async () => {
-      const response = await request(app).get("/api/bikes/non-existent");
+      const fakeId = "507f1f77bcf86cd799439011";
+      const response = await request(app).get(`/api/bikes/${fakeId}`);
 
       expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should include bookings for the bike", async () => {
+      const bike = await createTestBike();
+
+      const response = await request(app).get(`/api/bikes/${bike._id}`);
+
+      expect(response.body.data).toHaveProperty("bookings");
+      expect(Array.isArray(response.body.data.bookings)).toBe(true);
+    });
+  });
+
+  describe("GET /api/bikes/:id/availability", () => {
+    it("should return availability for time range", async () => {
+      const bike = await createTestBike();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const startTime = futureDate.toISOString();
+      const endTime = new Date(
+        futureDate.getTime() + 2 * 60 * 60 * 1000,
+      ).toISOString();
+
+      const response = await request(app).get(
+        `/api/bikes/${bike._id}/availability?startTime=${startTime}&endTime=${endTime}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.available).toBe(true);
+    });
+
+    it("should return unavailable when bike is booked", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const startTime = futureDate.toISOString();
+      const endTime = new Date(
+        futureDate.getTime() + 2 * 60 * 60 * 1000,
+      ).toISOString();
+
+      await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app).get(
+        `/api/bikes/${bike._id}/availability?startTime=${startTime}&endTime=${endTime}`,
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.data.available).toBe(false);
+    });
+
+    it("should require startTime and endTime", async () => {
+      const bike = await createTestBike();
+
+      const response = await request(app).get(
+        `/api/bikes/${bike._id}/availability`,
+      );
+
+      expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
     });
   });
 });
 
 describe("Bookings API", () => {
-  const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
-  const startTime = futureDate.toISOString();
-  const endTime = new Date(
-    futureDate.getTime() + 2 * 60 * 60 * 1000,
-  ).toISOString(); // 2 hours later
-
   describe("POST /api/bookings", () => {
     it("should create a new booking", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const startTime = futureDate.toISOString();
+      const endTime = new Date(
+        futureDate.getTime() + 2 * 60 * 60 * 1000,
+      ).toISOString();
+
       const response = await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-1",
+        bikeId: bike._id.toString(),
+        userId: user._id.toString(),
         startTime,
         endTime,
       });
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.bikeId).toBe("bike-1");
       expect(response.body.data.status).toBe("confirmed");
+      expect(response.body.data).toHaveProperty("totalPrice");
     });
 
     it("should prevent double booking", async () => {
+      const bike = await createTestBike();
+      const user1 = await createTestUser({ email: "user1@example.com" });
+      const user2 = await createTestUser({ email: "user2@example.com" });
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const startTime = futureDate.toISOString();
+      const endTime = new Date(
+        futureDate.getTime() + 2 * 60 * 60 * 1000,
+      ).toISOString();
+
       // First booking
       await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-1",
+        bikeId: bike._id.toString(),
+        userId: user1._id.toString(),
         startTime,
         endTime,
       });
 
       // Second booking for same time
       const response = await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-2",
+        bikeId: bike._id.toString(),
+        userId: user2._id.toString(),
         startTime,
         endTime,
       });
@@ -114,9 +266,51 @@ describe("Bookings API", () => {
     });
 
     it("should require all fields", async () => {
+      const bike = await createTestBike();
+
       const response = await request(app)
         .post("/api/bookings")
-        .send({ bikeId: "bike-1" });
+        .send({ bikeId: bike._id.toString() });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should reject booking in the past", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const response = await request(app)
+        .post("/api/bookings")
+        .send({
+          bikeId: bike._id.toString(),
+          userId: user._id.toString(),
+          startTime: pastDate.toISOString(),
+          endTime: new Date(
+            pastDate.getTime() + 2 * 60 * 60 * 1000,
+          ).toISOString(),
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should reject when end time is before start time", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const response = await request(app)
+        .post("/api/bookings")
+        .send({
+          bikeId: bike._id.toString(),
+          userId: user._id.toString(),
+          startTime: futureDate.toISOString(),
+          endTime: new Date(
+            futureDate.getTime() - 2 * 60 * 60 * 1000,
+          ).toISOString(),
+        });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -125,12 +319,16 @@ describe("Bookings API", () => {
 
   describe("GET /api/bookings", () => {
     it("should return list of bookings", async () => {
-      // Create a booking first
-      await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-1",
-        startTime,
-        endTime,
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
       });
 
       const response = await request(app).get("/api/bookings");
@@ -141,44 +339,118 @@ describe("Bookings API", () => {
     });
 
     it("should filter by userId", async () => {
-      await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-1",
-        startTime,
-        endTime,
+      const bike = await createTestBike();
+      const user1 = await createTestUser({ email: "user1@example.com" });
+      const user2 = await createTestUser({ email: "user2@example.com" });
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await Booking.create({
+        bikeId: bike._id,
+        userId: user1._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 1 * 60 * 60 * 1000),
+        status: "confirmed",
       });
 
-      const response = await request(app).get("/api/bookings?userId=user-1");
+      await Booking.create({
+        bikeId: bike._id,
+        userId: user2._id,
+        startTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        endTime: new Date(futureDate.getTime() + 3 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app).get(
+        `/api/bookings?userId=${user1._id}`,
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.data.length).toBe(1);
-      expect(response.body.data[0].userId).toBe("user-1");
+    });
+  });
+
+  describe("GET /api/bookings/:id", () => {
+    it("should return a single booking", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app).get(`/api/bookings/${booking._id}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty("bike");
+    });
+
+    it("should return 404 for non-existent booking", async () => {
+      const fakeId = "507f1f77bcf86cd799439011";
+      const response = await request(app).get(`/api/bookings/${fakeId}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
     });
   });
 
   describe("DELETE /api/bookings/:id", () => {
     it("should cancel a booking", async () => {
-      // Create a booking
-      const createResponse = await request(app).post("/api/bookings").send({
-        bikeId: "bike-1",
-        userId: "user-1",
-        startTime,
-        endTime,
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
       });
 
-      const bookingId = createResponse.body.data.id;
-
-      // Cancel it
-      const response = await request(app).delete(`/api/bookings/${bookingId}`);
+      const response = await request(app).delete(
+        `/api/bookings/${booking._id}`,
+      );
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
+
+      // Verify booking is cancelled
+      const updatedBooking = await Booking.findById(booking._id);
+      expect(updatedBooking?.status).toBe("cancelled");
     });
 
     it("should return 404 for non-existent booking", async () => {
-      const response = await request(app).delete("/api/bookings/non-existent");
+      const fakeId = "507f1f77bcf86cd799439011";
+      const response = await request(app).delete(`/api/bookings/${fakeId}`);
 
       expect(response.status).toBe(404);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should not cancel already cancelled booking", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "cancelled",
+      });
+
+      const response = await request(app).delete(
+        `/api/bookings/${booking._id}`,
+      );
+
+      expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
     });
   });
@@ -188,22 +460,35 @@ describe("Users API", () => {
   describe("POST /api/users/register", () => {
     it("should register a new user", async () => {
       const response = await request(app).post("/api/users/register").send({
-        email: "test@example.com",
+        email: "newuser@example.com",
         password: "password123",
-        name: "Test User",
+        name: "New User",
       });
 
       expect(response.status).toBe(201);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.email).toBe("test@example.com");
-      expect(response.body.data.name).toBe("Test User");
+      expect(response.body.data.email).toBe("newuser@example.com");
+      expect(response.body.data.name).toBe("New User");
       expect(response.body.data).not.toHaveProperty("password");
     });
 
-    it("should require all fields", async () => {
+    it("should reject duplicate email", async () => {
+      await createTestUser({ email: "duplicate@example.com" });
+
       const response = await request(app).post("/api/users/register").send({
-        email: "test@example.com",
+        email: "duplicate@example.com",
+        password: "password123",
+        name: "Another User",
       });
+
+      expect(response.status).toBe(409);
+      expect(response.body.success).toBe(false);
+    });
+
+    it("should require all fields", async () => {
+      const response = await request(app)
+        .post("/api/users/register")
+        .send({ email: "test@example.com" });
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
@@ -217,40 +502,28 @@ describe("Users API", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toContain("email");
+      expect(response.body.success).toBe(false);
     });
 
-    it("should prevent duplicate email registration", async () => {
-      // Register first user
-      await request(app).post("/api/users/register").send({
+    it("should require minimum password length", async () => {
+      const response = await request(app).post("/api/users/register").send({
         email: "test@example.com",
-        password: "password123",
+        password: "12345",
         name: "Test User",
       });
 
-      // Try to register with same email
-      const response = await request(app).post("/api/users/register").send({
-        email: "test@example.com",
-        password: "password456",
-        name: "Another User",
-      });
-
-      expect(response.status).toBe(409);
+      expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
     });
   });
 
   describe("POST /api/users/login", () => {
-    beforeEach(async () => {
-      // Create a user for login tests
-      await request(app).post("/api/users/register").send({
+    it("should login existing user", async () => {
+      await createTestUser({
         email: "login@example.com",
         password: "password123",
-        name: "Login User",
       });
-    });
 
-    it("should login with valid credentials", async () => {
       const response = await request(app).post("/api/users/login").send({
         email: "login@example.com",
         password: "password123",
@@ -262,9 +535,14 @@ describe("Users API", () => {
       expect(response.body.data).not.toHaveProperty("password");
     });
 
-    it("should reject invalid password", async () => {
+    it("should reject wrong password", async () => {
+      await createTestUser({
+        email: "wrong@example.com",
+        password: "correctpassword",
+      });
+
       const response = await request(app).post("/api/users/login").send({
-        email: "login@example.com",
+        email: "wrong@example.com",
         password: "wrongpassword",
       });
 
@@ -272,7 +550,7 @@ describe("Users API", () => {
       expect(response.body.success).toBe(false);
     });
 
-    it("should reject non-existent email", async () => {
+    it("should reject non-existent user", async () => {
       const response = await request(app).post("/api/users/login").send({
         email: "nonexistent@example.com",
         password: "password123",
@@ -284,28 +562,20 @@ describe("Users API", () => {
   });
 
   describe("GET /api/users/:id", () => {
-    it("should get user by ID", async () => {
-      // Register a user first
-      const registerResponse = await request(app)
-        .post("/api/users/register")
-        .send({
-          email: "getuser@example.com",
-          password: "password123",
-          name: "Get User",
-        });
+    it("should return user by ID", async () => {
+      const user = await createTestUser({ name: "Fetch User" });
 
-      const userId = registerResponse.body.data.id;
-
-      const response = await request(app).get(`/api/users/${userId}`);
+      const response = await request(app).get(`/api/users/${user._id}`);
 
       expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
-      expect(response.body.data.id).toBe(userId);
+      expect(response.body.data.name).toBe("Fetch User");
       expect(response.body.data).not.toHaveProperty("password");
     });
 
     it("should return 404 for non-existent user", async () => {
-      const response = await request(app).get("/api/users/non-existent");
+      const fakeId = "507f1f77bcf86cd799439011";
+      const response = await request(app).get(`/api/users/${fakeId}`);
 
       expect(response.status).toBe(404);
       expect(response.body.success).toBe(false);
@@ -313,10 +583,12 @@ describe("Users API", () => {
   });
 });
 
-describe("Express App", () => {
+describe("404 Handler", () => {
   it("should return 404 for unknown routes", async () => {
-    const response = await request(app).get("/api/unknown");
+    const response = await request(app).get("/api/unknown-route");
 
     expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+    expect(response.body.error).toBe("Not found");
   });
 });

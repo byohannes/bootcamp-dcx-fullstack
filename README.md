@@ -163,12 +163,56 @@ npm run dev -w apps/bike-booking/server
 npm run dev -w apps/bike-booking/client
 ```
 
+## �️ Database Setup (Bike Booking)
+
+The Bike Booking app uses MongoDB for data persistence.
+
+### Local MongoDB Setup
+
+1. **Install MongoDB** (if not already installed):
+   - macOS: `brew install mongodb-community`
+   - Linux: Follow [MongoDB installation guide](https://www.mongodb.com/docs/manual/administration/install-on-linux/)
+   - Windows: Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
+
+2. **Start MongoDB**:
+
+   ```bash
+   # macOS (Homebrew)
+   brew services start mongodb-community
+
+   # Linux
+   sudo systemctl start mongod
+   ```
+
+3. **Configure environment**:
+
+   ```bash
+   cd apps/bike-booking/server
+   cp .env.example .env
+   # Edit .env if needed (default: mongodb://localhost:27017/bike-booking)
+   ```
+
+4. **Seed the database**:
+   ```bash
+   npm run seed -w apps/bike-booking/server
+   ```
+
+### MongoDB Atlas (Cloud)
+
+1. Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Get your connection string
+3. Update `.env`:
+   ```env
+   MONGODB_URI=mongodb+srv://<username>:<password>@cluster.xxxxx.mongodb.net/bike-booking
+   ```
+
 ## 📚 Tech Stack
 
 | Layer        | Technologies                                                       |
 | ------------ | ------------------------------------------------------------------ |
 | **Frontend** | React 19, TypeScript, Vite 8                                       |
 | **Backend**  | Node.js 22, Express 5, TypeScript                                  |
+| **Database** | MongoDB with Mongoose ODM                                          |
 | **Testing**  | Jest + Supertest (server), Vitest + React Testing Library (client) |
 | **Tools**    | ESLint 10, Prettier, npm workspaces                                |
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Bike, Booking, View, User } from "./types";
 import {
   BikeList,
@@ -13,23 +13,24 @@ import "./App.css";
 // Local storage key for user session
 const USER_STORAGE_KEY = "bike-booking-user";
 
+// Load user from localStorage on initial load
+function getInitialUser(): User | null {
+  try {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    if (storedUser) {
+      return JSON.parse(storedUser);
+    }
+  } catch {
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
+  return null;
+}
+
 function App() {
   const [currentView, setCurrentView] = useState<View>("bikes");
   const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   const [lastBooking, setLastBooking] = useState<Booking | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-
-  // Load user from localStorage on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem(USER_STORAGE_KEY);
-      }
-    }
-  }, []);
+  const [user, setUser] = useState<User | null>(getInitialUser);
 
   function handleLogin(loggedInUser: User) {
     setUser(loggedInUser);

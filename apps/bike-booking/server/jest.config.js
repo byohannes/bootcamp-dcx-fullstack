@@ -5,5 +5,7 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.test.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
-  collectCoverageFrom: ['src/**/*.ts', '!src/index.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/index.ts', '!src/test/**'],
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
+  testTimeout: 30000,
 };

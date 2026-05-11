@@ -115,7 +115,7 @@ export function BookingForm({
         <div className="bike-summary">
           <span className="bike-type-badge">{bike.type}</span>
           <p>{bike.description}</p>
-          <p className="price-info">${bike.pricePerHour}/hour</p>
+          <p className="price-info">£{bike.pricePerHour}/hour</p>
         </div>
 
         <form onSubmit={handleSubmit} className="booking-form">
@@ -182,7 +182,7 @@ export function BookingForm({
           {estimatedPrice !== null && (
             <div className="price-estimate">
               <span>Estimated Total:</span>
-              <span className="price">${estimatedPrice.toFixed(2)}</span>
+              <span className="price">£{estimatedPrice.toFixed(2)}</span>
             </div>
           )}
 

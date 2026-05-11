@@ -20,6 +20,7 @@
 .bike-image {
   height: 180px;
   overflow: hidden;
+  position: relative;
 }
 
 .bike-image img {
@@ -31,6 +32,21 @@
 
 .bike-card:hover .bike-image img {
   transform: scale(1.05);
+}
+
+.unavailable-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
 }
 
 .bike-info {

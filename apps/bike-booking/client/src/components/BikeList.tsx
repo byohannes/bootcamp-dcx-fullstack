@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { Bike } from "../types";
 import { getBikes } from "../api";
 import { BikeCard } from "./BikeCard";
+import { LoadingSkeleton } from "./LoadingSkeleton";
+import { Alert } from "./Alert";
 import "./BikeList.css";
 
 interface BikeListProps {
@@ -51,19 +53,35 @@ export function BikeList({ onSelectBike }: BikeListProps) {
         </div>
       </div>
 
-      {loading && <div className="loading">Loading bikes...</div>}
-
-      {error && <div className="error">{error}</div>}
-
-      {!loading && !error && bikes.length === 0 && (
-        <div className="empty">No bikes available</div>
+      {error && (
+        <Alert type="error" message={error} onClose={() => setError(null)} />
       )}
 
-      <div className="bike-grid">
-        {bikes.map((bike) => (
-          <BikeCard key={bike.id} bike={bike} onSelect={onSelectBike} />
-        ))}
-      </div>
+      {loading && (
+        <div className="bike-grid">
+          <LoadingSkeleton count={6} type="card" />
+        </div>
+      )}
+
+      {!loading && !error && bikes.length === 0 && (
+        <div className="empty">
+          <p>No bikes available for the selected type.</p>
+          <button
+            className="reset-button"
+            onClick={() => setSelectedType("all")}
+          >
+            Show All Bikes
+          </button>
+        </div>
+      )}
+
+      {!loading && bikes.length > 0 && (
+        <div className="bike-grid">
+          {bikes.map((bike) => (
+            <BikeCard key={bike.id} bike={bike} onSelect={onSelectBike} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

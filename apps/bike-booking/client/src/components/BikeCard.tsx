@@ -6,22 +6,34 @@ interface BikeCardProps {
   onSelect: (bike: Bike) => void;
 }
 
+const bikeTypeEmoji: Record<string, string> = {
+  mountain: "⛰️",
+  road: "🏎️",
+  city: "🏙️",
+  electric: "⚡",
+};
+
 export function BikeCard({ bike, onSelect }: BikeCardProps) {
   return (
     <div className={`bike-card ${!bike.isAvailable ? "unavailable" : ""}`}>
       <div className="bike-image">
-        <img src={bike.imageUrl} alt={bike.name} />
+        <img src={bike.imageUrl} alt={bike.name} loading="lazy" />
+        {!bike.isAvailable && (
+          <div className="unavailable-overlay">Currently Booked</div>
+        )}
       </div>
       <div className="bike-info">
         <h3>{bike.name}</h3>
-        <span className="bike-type">{bike.type}</span>
+        <span className="bike-type">
+          {bikeTypeEmoji[bike.type] || "🚲"} {bike.type}
+        </span>
         <p className="bike-description">{bike.description}</p>
         <div className="bike-footer">
-          <span className="bike-price">${bike.pricePerHour}/hour</span>
+          <span className="bike-price">£{bike.pricePerHour}/hour</span>
           <span
             className={`bike-status ${bike.isAvailable ? "available" : "unavailable"}`}
           >
-            {bike.isAvailable ? "Available" : "Booked"}
+            {bike.isAvailable ? "✓ Available" : "Booked"}
           </span>
         </div>
         <button

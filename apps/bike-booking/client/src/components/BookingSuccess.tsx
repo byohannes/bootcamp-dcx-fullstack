@@ -41,7 +41,7 @@ export function BookingSuccess({
           {booking.totalPrice && (
             <div className="summary-row total">
               <span className="label">Total:</span>
-              <span>${booking.totalPrice.toFixed(2)}</span>
+              <span>£{booking.totalPrice.toFixed(2)}</span>
             </div>
           )}
           <div className="booking-id">Booking ID: {booking.id}</div>
