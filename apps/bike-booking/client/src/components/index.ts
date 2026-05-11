@@ -7,3 +7,4 @@ export { Login } from "./Login";
 export { Register } from "./Register";
 export { LoadingSkeleton } from "./LoadingSkeleton";
 export { Alert } from "./Alert";
+export { ConfirmDialog } from "./ConfirmDialog";

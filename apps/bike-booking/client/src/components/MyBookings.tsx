@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Booking } from "../types";
 import { getBookings, cancelBooking } from "../api";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Alert } from "./Alert";
 import "./MyBookings.css";
 
 interface MyBookingsProps {
@@ -12,44 +14,75 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    loadBookings();
+    let cancelled = false;
+
+    async function fetchBookings() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getBookings(userId);
+        if (cancelled) return;
+        // Sort by start time, most recent first
+        data.sort(
+          (a, b) =>
+            new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+        );
+        setBookings(data);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Failed to load bookings",
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchBookings();
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
-  async function loadBookings() {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getBookings(userId);
-      // Sort by start time, most recent first
-      data.sort(
-        (a, b) =>
-          new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
-      );
-      setBookings(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load bookings");
-    } finally {
-      setLoading(false);
-    }
+  function handleCancelClick(bookingId: string) {
+    setCancellingId(bookingId);
   }
 
-  async function handleCancel(bookingId: string) {
-    if (!confirm("Are you sure you want to cancel this booking?")) return;
+  function handleCancelDialogClose() {
+    setCancellingId(null);
+  }
 
+  async function handleConfirmCancel() {
+    if (!cancellingId) return;
+
+    setIsCancelling(true);
     try {
-      await cancelBooking(bookingId);
+      await cancelBooking(cancellingId);
       // Update local state
       setBookings(
         bookings.map((b) =>
-          b.id === bookingId ? { ...b, status: "cancelled" } : b,
+          b.id === cancellingId ? { ...b, status: "cancelled" } : b,
         ),
       );
+      setSuccessMessage("Booking cancelled successfully");
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to cancel booking");
+      setError(err instanceof Error ? err.message : "Failed to cancel booking");
+    } finally {
+      setIsCancelling(false);
+      setCancellingId(null);
     }
   }
+
+  const bookingToCancel = bookings.find((b) => b.id === cancellingId);
 
   function formatDateTime(dateString: string): string {
     return new Date(dateString).toLocaleString(undefined, {
@@ -76,8 +109,18 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
         </button>
       </div>
 
+      {successMessage && (
+        <Alert
+          type="success"
+          message={successMessage}
+          onClose={() => setSuccessMessage(null)}
+        />
+      )}
+
       {loading && <div className="loading">Loading bookings...</div>}
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <Alert type="error" message={error} onClose={() => setError(null)} />
+      )}
 
       {!loading && !error && bookings.length === 0 && (
         <div className="empty">
@@ -115,7 +158,7 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
                   {booking.status === "confirmed" && (
                     <button
                       className="cancel-button"
-                      onClick={() => handleCancel(booking.id)}
+                      onClick={() => handleCancelClick(booking.id)}
                     >
                       Cancel
                     </button>
@@ -159,6 +202,19 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
             ))}
           </div>
         </section>
+      )}
+
+      {cancellingId && bookingToCancel && (
+        <ConfirmDialog
+          title="Cancel Booking"
+          message={`Are you sure you want to cancel your booking for ${bookingToCancel.bike?.name || "this bike"}? This action cannot be undone.`}
+          confirmText="Yes, Cancel Booking"
+          cancelText="No, Keep Booking"
+          onConfirm={handleConfirmCancel}
+          onCancel={handleCancelDialogClose}
+          isLoading={isCancelling}
+          variant="danger"
+        />
       )}
     </div>
   );
