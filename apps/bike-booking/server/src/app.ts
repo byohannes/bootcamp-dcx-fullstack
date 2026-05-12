@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import swaggerUi from "swagger-ui-express";
 import bikesRouter from "./routes/bikes";
 import bookingsRouter from "./routes/bookings";
 import usersRouter from "./routes/users";
 import { errorHandler, requestLogger } from "./middleware";
+import { openapiSpec } from "./openapi";
 
 const app = express();
 
@@ -38,6 +40,19 @@ app.get("/api/health", async (req, res) => {
 app.use("/api/bikes", bikesRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/users", usersRouter);
+
+// OpenAPI: raw spec and interactive Swagger UI
+app.get("/api/openapi.json", (_req, res) => {
+  res.json(openapiSpec);
+});
+app.use(
+  "/api/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(openapiSpec, {
+    customSiteTitle: "Bike Booking API Docs",
+    swaggerOptions: { persistAuthorization: true },
+  }),
+);
 
 // 404 handler
 app.use((req, res) => {

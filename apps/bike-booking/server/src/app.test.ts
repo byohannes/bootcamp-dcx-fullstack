@@ -693,3 +693,30 @@ describe("404 Handler", () => {
     expect(response.body.error).toBe("Not found");
   });
 });
+
+describe("API Documentation", () => {
+  describe("GET /api/openapi.json", () => {
+    it("should return a valid OpenAPI 3 document", async () => {
+      const response = await request(app).get("/api/openapi.json");
+
+      expect(response.status).toBe(200);
+      expect(response.headers["content-type"]).toMatch(/application\/json/);
+      expect(response.body.openapi).toMatch(/^3\./);
+      expect(response.body.info.title).toBe("Bike Booking API");
+      expect(response.body.paths).toHaveProperty("/bikes");
+      expect(response.body.paths).toHaveProperty("/bookings");
+      expect(response.body.paths["/bookings/{id}"]).toHaveProperty("delete");
+    });
+  });
+
+  describe("GET /api/docs", () => {
+    it("should serve the Swagger UI HTML", async () => {
+      // /api/docs/ is the canonical Swagger UI entry point.
+      const response = await request(app).get("/api/docs/");
+
+      expect(response.status).toBe(200);
+      expect(response.headers["content-type"]).toMatch(/text\/html/);
+      expect(response.text).toMatch(/swagger/i);
+    });
+  });
+});

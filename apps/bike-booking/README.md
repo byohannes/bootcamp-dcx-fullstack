@@ -159,6 +159,8 @@ npm run dev
 - **Frontend**: http://localhost:5174
 - **Backend API**: http://localhost:5001
 - **API Health Check**: http://localhost:5001/api/health
+- **Interactive API Docs (Swagger UI)**: http://localhost:5001/api/docs
+- **Raw OpenAPI 3 spec**: http://localhost:5001/api/openapi.json
 
 ## API Endpoints
 
