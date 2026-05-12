@@ -75,9 +75,14 @@ export async function createBooking(
   return data.data!;
 }
 
-export async function cancelBooking(id: string): Promise<void> {
+export async function cancelBooking(id: string, userId: string): Promise<void> {
   const response = await fetch(`${API_BASE}/bookings/${id}`, {
     method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "x-user-id": userId,
+    },
+    body: JSON.stringify({ userId }),
   });
   const data: ApiResponse<{ message: string }> = await response.json();
   if (!data.success) {

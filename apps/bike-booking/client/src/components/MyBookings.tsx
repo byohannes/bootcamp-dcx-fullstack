@@ -65,7 +65,7 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
 
     setIsCancelling(true);
     try {
-      await cancelBooking(cancellingId);
+      await cancelBooking(cancellingId, userId);
       // Update local state
       setBookings(
         bookings.map((b) =>
@@ -91,14 +91,18 @@ export function MyBookings({ userId, onBack }: MyBookingsProps) {
     });
   }
 
-  function isUpcoming(booking: Booking): boolean {
+  // A booking is considered "active" (shown in the upcoming list and
+  // cancellable) as long as it hasn't ended yet and isn't cancelled.
+  // Previously this used `startTime > now`, which misclassified in-progress
+  // bookings as "Past" and hid the Cancel button while the rental was live.
+  function isActive(booking: Booking): boolean {
     return (
-      new Date(booking.startTime) > new Date() && booking.status === "confirmed"
+      new Date(booking.endTime) > new Date() && booking.status === "confirmed"
     );
   }
 
-  const upcomingBookings = bookings.filter(isUpcoming);
-  const pastBookings = bookings.filter((b) => !isUpcoming(b));
+  const upcomingBookings = bookings.filter(isActive);
+  const pastBookings = bookings.filter((b) => !isActive(b));
 
   return (
     <div className="my-bookings-container">

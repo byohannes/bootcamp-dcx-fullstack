@@ -188,6 +188,20 @@ router.post("/", async (req: Request, res: Response) => {
 
     await newBooking.save();
 
+    // Re-check after insert to close the check-then-act race window.
+    // If a concurrent request also booked an overlapping slot, roll this one
+    // back so we never end up with two confirmed bookings for the same bike
+    // and overlapping time range.
+    if (!(await isBikeAvailable(bikeId, startTime, endTime, newBooking.id))) {
+      await Booking.deleteOne({ _id: newBooking._id });
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "Bike is not available for the selected time period",
+      };
+      res.status(409).json(response);
+      return;
+    }
+
     const response: ApiResponse<unknown> = {
       success: true,
       data: {
@@ -207,6 +221,25 @@ router.post("/", async (req: Request, res: Response) => {
 router.delete("/:id", async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    // Accept userId from header, query, or body so the caller's identity can
+    // be verified against the booking owner. (Until proper auth is in place,
+    // this prevents trivially cancelling someone else's booking by id.)
+    const userId =
+      (req.header("x-user-id") as string | undefined) ||
+      (typeof req.query.userId === "string" ? req.query.userId : undefined) ||
+      (req.body && typeof req.body.userId === "string"
+        ? req.body.userId
+        : undefined);
+
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "userId is required to cancel a booking",
+      };
+      res.status(401).json(response);
+      return;
+    }
+
     const booking = await Booking.findById(id);
 
     if (!booking) {
@@ -218,10 +251,29 @@ router.delete("/:id", async (req: Request, res: Response) => {
       return;
     }
 
+    if (booking.userId.toString() !== userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "You are not allowed to cancel this booking",
+      };
+      res.status(403).json(response);
+      return;
+    }
+
     if (booking.status === "cancelled") {
       const response: ApiResponse<null> = {
         success: false,
         error: "Booking is already cancelled",
+      };
+      res.status(400).json(response);
+      return;
+    }
+
+    // Don't allow cancelling bookings that have already ended.
+    if (booking.endTime.getTime() <= Date.now()) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "Cannot cancel a booking that has already ended",
       };
       res.status(400).json(response);
       return;

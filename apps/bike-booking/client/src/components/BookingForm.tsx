@@ -170,6 +170,11 @@ export function BookingForm({
                 type="time"
                 id="endTime"
                 value={endTime}
+                min={
+                  endDate && startDate && endDate === startDate
+                    ? startTime || undefined
+                    : undefined
+                }
                 onChange={(e) => {
                   setEndTime(e.target.value);
                   setIsAvailable(null);

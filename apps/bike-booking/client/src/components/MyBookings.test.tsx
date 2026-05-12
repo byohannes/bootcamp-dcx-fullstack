@@ -247,7 +247,7 @@ describe("MyBookings", () => {
     );
 
     await waitFor(() => {
-      expect(cancelBooking).toHaveBeenCalledWith("booking-1");
+      expect(cancelBooking).toHaveBeenCalledWith("booking-1", mockUserId);
     });
   });
 
@@ -277,5 +277,42 @@ describe("MyBookings", () => {
       expect(screen.getAllByText("confirmed").length).toBeGreaterThan(0);
       expect(screen.getByText("cancelled")).toBeInTheDocument();
     });
+  });
+
+  it("keeps in-progress bookings in the upcoming list and cancellable", async () => {
+    // A booking whose start time is in the past but end time is still in the
+    // future should be treated as active (cancellable), not a past booking.
+    const now = Date.now();
+    const inProgressBooking: Booking = {
+      id: "booking-in-progress",
+      bikeId: "bike-4",
+      userId: "user-1",
+      startTime: new Date(now - 30 * 60 * 1000).toISOString(),
+      endTime: new Date(now + 30 * 60 * 1000).toISOString(),
+      status: "confirmed",
+      bike: {
+        id: "bike-4",
+        name: "In Progress Bike",
+        type: "mountain",
+        description: "Currently rented",
+        pricePerHour: 12,
+        imageUrl: "/images/inprogress.jpg",
+        isAvailable: false,
+      },
+    };
+
+    (getBookings as ReturnType<typeof vi.fn>).mockResolvedValue([
+      inProgressBooking,
+    ]);
+
+    render(<MyBookings userId={mockUserId} onBack={mockOnBack} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("In Progress Bike")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Upcoming Bookings")).toBeInTheDocument();
+    expect(screen.queryByText("Past Bookings")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 });

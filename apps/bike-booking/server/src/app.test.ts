@@ -400,7 +400,32 @@ describe("Bookings API", () => {
   });
 
   describe("DELETE /api/bookings/:id", () => {
-    it("should cancel a booking", async () => {
+    it("should cancel a booking when caller is the owner", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app)
+        .delete(`/api/bookings/${booking._id}`)
+        .set("x-user-id", user._id.toString());
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+
+      // Verify booking is cancelled
+      const updatedBooking = await Booking.findById(booking._id);
+      expect(updatedBooking?.status).toBe("cancelled");
+    });
+
+    it("should return 401 when userId is missing", async () => {
       const bike = await createTestBike();
       const user = await createTestUser();
       const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -417,17 +442,45 @@ describe("Bookings API", () => {
         `/api/bookings/${booking._id}`,
       );
 
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
 
-      // Verify booking is cancelled
-      const updatedBooking = await Booking.findById(booking._id);
-      expect(updatedBooking?.status).toBe("cancelled");
+      // Should not have been cancelled
+      const unchanged = await Booking.findById(booking._id);
+      expect(unchanged?.status).toBe("confirmed");
+    });
+
+    it("should return 403 when caller is not the owner", async () => {
+      const bike = await createTestBike();
+      const owner = await createTestUser({ email: "owner@example.com" });
+      const other = await createTestUser({ email: "other@example.com" });
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: owner._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app)
+        .delete(`/api/bookings/${booking._id}`)
+        .set("x-user-id", other._id.toString());
+
+      expect(response.status).toBe(403);
+      expect(response.body.success).toBe(false);
+
+      const unchanged = await Booking.findById(booking._id);
+      expect(unchanged?.status).toBe("confirmed");
     });
 
     it("should return 404 for non-existent booking", async () => {
+      const user = await createTestUser();
       const fakeId = "507f1f77bcf86cd799439011";
-      const response = await request(app).delete(`/api/bookings/${fakeId}`);
+      const response = await request(app)
+        .delete(`/api/bookings/${fakeId}`)
+        .set("x-user-id", user._id.toString());
 
       expect(response.status).toBe(404);
       expect(response.body.success).toBe(false);
@@ -446,12 +499,60 @@ describe("Bookings API", () => {
         status: "cancelled",
       });
 
-      const response = await request(app).delete(
-        `/api/bookings/${booking._id}`,
-      );
+      const response = await request(app)
+        .delete(`/api/bookings/${booking._id}`)
+        .set("x-user-id", user._id.toString());
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
+    });
+
+    it("should not cancel a booking that has already ended", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const pastStart = new Date(Date.now() - 4 * 60 * 60 * 1000);
+      const pastEnd = new Date(Date.now() - 1 * 60 * 60 * 1000);
+
+      // Use insertMany to bypass the schema's pre-save validation
+      // for past dates, mirroring a booking that was created then ran out.
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: pastStart,
+        endTime: pastEnd,
+        status: "confirmed",
+      });
+
+      const response = await request(app)
+        .delete(`/api/bookings/${booking._id}`)
+        .set("x-user-id", user._id.toString());
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+
+      const unchanged = await Booking.findById(booking._id);
+      expect(unchanged?.status).toBe("confirmed");
+    });
+
+    it("should accept userId from request body as a fallback", async () => {
+      const bike = await createTestBike();
+      const user = await createTestUser();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      const booking = await Booking.create({
+        bikeId: bike._id,
+        userId: user._id,
+        startTime: futureDate,
+        endTime: new Date(futureDate.getTime() + 2 * 60 * 60 * 1000),
+        status: "confirmed",
+      });
+
+      const response = await request(app)
+        .delete(`/api/bookings/${booking._id}`)
+        .send({ userId: user._id.toString() });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
     });
   });
 });
