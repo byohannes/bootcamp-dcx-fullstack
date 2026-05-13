@@ -47,10 +47,10 @@ router.post("/register", async (req, res) => {
       return res.status(400).json(response);
     }
 
-    // Create new user (in production, password would be hashed)
+    // Password is hashed automatically by the User model's pre-save hook.
     const newUser = new User({
       email,
-      password, // In production: await bcrypt.hash(password, 10)
+      password,
       name,
     });
 
@@ -93,8 +93,9 @@ router.post("/login", async (req, res) => {
       return res.status(401).json(response);
     }
 
-    // Check password (in production, use bcrypt.compare)
-    if (user.password !== password) {
+    // Use the model's comparePassword to validate against the stored hash.
+    const passwordMatches = await user.comparePassword(password);
+    if (!passwordMatches) {
       const response: ApiResponse<null> = {
         success: false,
         error: "Invalid email or password",

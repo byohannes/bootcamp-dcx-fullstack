@@ -9,6 +9,7 @@
   "scripts": {
     "dev:ecommerce": "concurrently \"npm run dev --workspace=apps/ecommerce/server\" \"npm run dev --workspace=apps/ecommerce/client\"",
     "dev:bike": "concurrently \"npm run dev --workspace=apps/bike-booking/server\" \"npm run dev --workspace=apps/bike-booking/client\"",
+    "test:e2e:bike": "npm run test:e2e --workspace=apps/bike-booking/client",
     "lint": "eslint .",
     "format": "prettier . --write"
   },

@@ -93,12 +93,13 @@ Start with `tasks/sprint-0.md` in your chosen app.
 
 ## 🛠️ Available Scripts
 
-| Command                 | Description                      |
-| ----------------------- | -------------------------------- |
-| `npm run dev:ecommerce` | Run ecommerce client + server    |
-| `npm run dev:bike`      | Run bike-booking client + server |
-| `npm run lint`          | Run ESLint                       |
-| `npm run format`        | Format code with Prettier        |
+| Command                 | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `npm run dev:ecommerce` | Run ecommerce client + server             |
+| `npm run dev:bike`      | Run bike-booking client + server          |
+| `npm run test:e2e:bike` | Run Playwright E2E tests for bike-booking |
+| `npm run lint`          | Run ESLint                                |
+| `npm run format`        | Format code with Prettier                 |
 
 ## 🧪 Running Tests
 
@@ -134,6 +135,28 @@ npm test -w apps/ecommerce/client
 npm run test:coverage -w apps/ecommerce/server
 npm run test:coverage -w apps/ecommerce/client
 ```
+
+### End-to-End Tests (Playwright)
+
+The bike-booking app ships with Playwright E2E tests that drive Chromium
+against the running app. Playwright auto-starts both the Vite dev server and
+the Express API; you only need to make sure **MongoDB is running** locally
+(see [Database Setup](#-database-setup-bike-booking)).
+
+```bash
+# From the repo root
+npm run test:e2e:bike
+
+# From the client workspace, with more options
+cd apps/bike-booking/client
+npm run test:e2e:ui          # interactive UI mode
+npm run test:e2e:headed      # watch tests in a visible browser
+npm run test:e2e:codegen     # record a new test
+npm run test:e2e:report      # open the last HTML report
+```
+
+Specs live in [`apps/bike-booking/client/e2e/`](apps/bike-booking/client/e2e/)
+and cover smoke, auth, and the full booking flow.
 
 ## 🚀 Running Individual Apps
 
@@ -208,13 +231,13 @@ The Bike Booking app uses MongoDB for data persistence.
 
 ## 📚 Tech Stack
 
-| Layer        | Technologies                                                       |
-| ------------ | ------------------------------------------------------------------ |
-| **Frontend** | React 19, TypeScript, Vite 8                                       |
-| **Backend**  | Node.js 22, Express 5, TypeScript                                  |
-| **Database** | MongoDB with Mongoose ODM                                          |
-| **Testing**  | Jest + Supertest (server), Vitest + React Testing Library (client) |
-| **Tools**    | ESLint 10, Prettier, npm workspaces                                |
+| Layer        | Technologies                                                            |
+| ------------ | ----------------------------------------------------------------------- |
+| **Frontend** | React 19, TypeScript, Vite 8                                            |
+| **Backend**  | Node.js 22, Express 5, TypeScript, bcryptjs (bike-booking)              |
+| **Database** | MongoDB with Mongoose ODM (bike-booking)                                |
+| **Testing**  | Jest + Supertest (server), Vitest + RTL (client unit), Playwright (E2E) |
+| **Tools**    | ESLint 10, Prettier, npm workspaces                                     |
 
 ## 🌿 Git Workflow for Workshop Exercises
 

@@ -14,17 +14,24 @@ A full-stack bike rental booking application built with React, TypeScript, Expre
 
 ### Frontend
 
-- React 18+ with TypeScript
-- Vite for build tooling
-- CSS Modules for styling
-- Context API for state management
+- React 19 with TypeScript
+- Vite 8 for build tooling
+- Plain CSS (per-component) for styling
+- React Context API for cross-component state (user/auth)
 
 ### Backend
 
-- Express.js with TypeScript
+- Express 5 with TypeScript
 - MongoDB with Mongoose ODM
-- RESTful API design
-- Error handling middleware
+- bcryptjs for password hashing
+- RESTful API with centralised error handling middleware
+- OpenAPI 3 spec served via Swagger UI
+
+### Testing
+
+- **Server**: Jest + Supertest + `mongodb-memory-server`
+- **Client (unit/component)**: Vitest + React Testing Library
+- **End-to-end**: Playwright (Chromium)
 
 ## Project Structure
 
@@ -226,7 +233,7 @@ npm run dev
 ```typescript
 {
   email: string;
-  password: string;
+  password: string; // stored as a bcrypt hash, never returned by the API
   name: string;
 }
 ```
@@ -247,27 +254,74 @@ npm run test:watch   # Run tests in watch mode
 **Client:**
 
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run test         # Run tests
+npm run dev              # Start Vite dev server (port 5174)
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run test             # Vitest unit/component tests (watch mode)
+npm run test:coverage    # Vitest with coverage
+npm run test:e2e         # Playwright E2E tests
+npm run test:e2e:ui      # Playwright UI mode
+npm run test:e2e:codegen # Record a new test
 ```
 
 ## Testing
 
-### Server Tests
+### Server Tests (Jest + Supertest)
+
+Uses `mongodb-memory-server`, so no real MongoDB is required to run the suite.
 
 ```bash
 cd apps/bike-booking/server
-npm run test
+npm run test            # one-off run
+npm run test:watch      # watch mode
+npm run test:coverage   # coverage report
 ```
 
-### Client Tests
+### Client Unit / Component Tests (Vitest)
 
 ```bash
 cd apps/bike-booking/client
-npm run test
+npm run test            # watch mode
+npm run test -- --run   # one-off run
+npm run test:coverage   # coverage report
 ```
+
+### End-to-End Tests (Playwright)
+
+E2E tests drive a real Chromium browser against the running app. Playwright's
+`webServer` config will start the Vite dev server (port 5174) and Express API
+(port 5001) automatically, but you must have **MongoDB running** (the API
+requires a real database, unlike the Jest suite).
+
+```bash
+cd apps/bike-booking/client
+
+npm run test:e2e            # headless run
+npm run test:e2e:ui         # interactive UI mode
+npm run test:e2e:headed     # run in a visible browser
+npm run test:e2e:report     # open the last HTML report
+npm run test:e2e:codegen    # record a new test by clicking through the app
+```
+
+From the repo root you can also run:
+
+```bash
+npm run test:e2e:bike
+```
+
+Specs live in `apps/bike-booking/client/e2e/` and cover:
+
+- Smoke: page loads, navigation between login/register
+- Auth: full registration flow + invalid login error
+- Booking: end-to-end booking flow + My Bookings list
+
+## Security & Authentication
+
+- Passwords are hashed with **bcryptjs** via a Mongoose `pre('save')` hook on
+  the `User` model.
+- The `password` field is `select: false`, so it is never returned by default
+  queries; the login route explicitly selects it for comparison.
+- The `toJSON` transform also strips `password` and `__v` from API responses.
 
 ## License
 
